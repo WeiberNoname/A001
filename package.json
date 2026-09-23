@@ -1,0 +1,14 @@
+{
+  "name": "vacuum-burst-lab",
+  "version": "0.1.0",
+  "description": "Sizing simulator for an oil-free vacuum burst puffing machine",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-packager . VacuumBurstLab --platform=win32 --arch=x64 --ignore=\"VacuumBurstLab-win32-x64\" --overwrite"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-packager": "^17.1.2"
+  }
+}
