@@ -1,3 +1,4 @@
 node_modules/
 VacuumBurstLab-win32-x64/
 *.zip
+firmware/.pio/

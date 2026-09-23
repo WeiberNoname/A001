@@ -1,8 +1,14 @@
 # Vacuum Burst Lab
 
+Firmware for the machine's ESP32 controller is in [`firmware/`](firmware/).
+
 Sizing simulator for an oil-free **vacuum burst puffing** machine (真空爆發膨化機) — the physics of 爆米香, using a sudden vacuum instead of high pressure.
 
 Adjust food load and hardware (chamber, vacuum tank, valve bore, pump) to see final pressure, boiling point, flashed water, pressure-drop time, a puff index, and sizing warnings. Includes the Prototype 1 build spec, control sequence and bill of materials.
+
+## Machine view
+
+The **Machine** tab is an animated 2D cutaway of one full cycle: air molecules drain from the chamber into the tank, the water inside the food flashes to steam and the food puffs, while valves switch, the pump spins and the heater glows. A thermometer shows the food temperature against the boiling point at the current pressure, which is the key to the whole process, and an inset shows the cells inside one piece. The burst plays in slow motion, and each step has a plain-language explanation. The "Try" buttons show what goes wrong with a valve that's too small, food that's too cold, or a tank that's too small.
 
 ## Live test station
 

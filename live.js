@@ -31,6 +31,8 @@
   function ingest(s) {
     if (run.length >= MAX_SAMPLES) run.splice(0, 10000);
     run.push(s);
+    // A finished burst makes room for the next cycle on the same connection.
+    if (burst && burst.done && ((s.state === 'HEAT' && lastState !== 'HEAT') || (!s.state && s.t - burst.t0 > 10000))) burst = null;
     if (!burst) {
       let hit = s.state === 'BURST' && lastState !== 'BURST';
       if (!hit && !s.state) {
@@ -179,6 +181,7 @@
   function setRunning(on) {
     $('btnConnect').disabled = on; $('btnDemo').disabled = on; $('btnDisconnect').disabled = !on;
     if (!on) source = null;
+    $('machineCtl').hidden = !(on && source && source.send);
     dirty = true;
   }
   function devlog(line) {
@@ -303,12 +306,16 @@
     const decoder = new TextDecoderStream();
     const piped = port.readable.pipeTo(decoder.writable).catch(() => {});
     const reader = decoder.readable.getReader();
+    const writer = port.writable.getWriter();
+    const encoder = new TextEncoder();
     let stopping = false;
     source = {
+      send: async text => { await writer.write(encoder.encode(text + '\n')); devlog('> ' + text); },
       stop: async () => {
         stopping = true;
         try { await reader.cancel(); } catch {}
         await piped;
+        try { writer.releaseLock(); } catch {}
         try { await port.close(); } catch {}
       }
     };
@@ -327,7 +334,20 @@
     } catch (e) {
       if (!stopping) status('Connection lost: ' + e.message);
     }
-    if (!stopping) { setRunning(false); try { await port.close(); } catch {} }
+    if (!stopping) { setRunning(false); try { writer.releaseLock(); } catch {} try { await port.close(); } catch {} }
+  });
+
+  // ---------- machine commands ----------
+  async function send(text) {
+    if (!source || !source.send) return;
+    try { await source.send(text); } catch (e) { status('Could not send: ' + e.message); }
+  }
+  document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => send(b.dataset.cmd)));
+  $('btnSendSettings').addEventListener('click', async () => {
+    const v = settings();
+    await send('SET food_c ' + v.t);
+    await send('SET tank_kpa ' + v.pt);
+    await send('GET');
   });
 
   // ---------- batches ----------

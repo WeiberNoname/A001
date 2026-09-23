@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-packager . VacuumBurstLab --platform=win32 --arch=x64 --ignore=\"VacuumBurstLab-win32-x64\" --overwrite"
+    "build": "electron-packager . VacuumBurstLab --platform=win32 --arch=x64 --ignore=\"VacuumBurstLab-win32-x64|firmware\" --overwrite"
   },
   "devDependencies": {
     "electron": "^31.0.0",
