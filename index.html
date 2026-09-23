@@ -77,6 +77,32 @@ ol.seq code,p code{font-family:var(--mono);font-size:12px;color:var(--teal)}
 .note{font-size:12px;color:var(--muted)}
 .diagram svg{width:100%;height:auto;display:block}
 .diagram text{font-family:var(--mono);font-size:11px;fill:var(--ink)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{font:600 13px var(--mono);letter-spacing:.06em;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--teal)}
+.tabs button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.tabpane{display:flex;flex-direction:column;gap:36px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:600 13px var(--sans);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px 14px;cursor:pointer}
+.btn:hover:not(:disabled),.btn:focus-visible{border-color:var(--teal);outline:none}
+.btn.primary{background:var(--teal);color:var(--surface);border-color:var(--teal)}
+.btn:disabled{opacity:.45;cursor:default}
+.inline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+select,input[type=text],input[type=number],textarea{font:14px var(--sans);background:var(--ground);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+.portlist{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.portlist button{text-align:left}
+.pill{font:600 12px var(--mono);letter-spacing:.08em;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.pill.on{color:var(--surface);background:var(--teal);border-color:var(--teal)}
+.pill.burst{background:var(--amber);border-color:var(--amber);color:var(--surface)}
+canvas.plot{width:100%;height:240px;display:block}
+.form{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:760px){.form{grid-template-columns:1fr 1fr}}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.form .wide{grid-column:1/-1}
+.form input,.form select,.form textarea{width:100%;min-width:0}
+.devlog{font:12px var(--mono);color:var(--muted);white-space:pre-wrap;margin:8px 0 0;max-height:7.5em;overflow:auto}
+pre.code{font:12px var(--mono);background:var(--ground);border:1px solid var(--line);border-radius:4px;padding:12px;overflow-x:auto;margin:8px 0 0}
+td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:pointer;padding:0}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
 </style>
 </head>
@@ -88,6 +114,13 @@ ol.seq code,p code{font-family:var(--mono);font-size:12px;color:var(--teal)}
   <h1>Vacuum Burst Lab</h1>
   <p>Puffs food with a sudden pressure drop instead of oil, using the same physics as 爆米香 but pulling a vacuum rather than building high pressure. Warm food is exposed all at once to a pre-evacuated tank. The water inside boils instantly and puffs the structure. Use this to size the chamber, tank, valve and pump before buying hardware.</p>
 </header>
+
+<nav class="tabs" role="tablist">
+  <button type="button" role="tab" data-tab="sim" aria-selected="true">Simulator</button>
+  <button type="button" role="tab" data-tab="live" aria-selected="false">Live test</button>
+</nav>
+
+<div id="tab-sim" class="tabpane">
 
 <section class="lab">
   <form class="panel controls" id="f" onsubmit="return false">
@@ -218,6 +251,92 @@ ol.seq code,p code{font-family:var(--mono);font-size:12px;color:var(--teal)}
 </section>
 </div>
 
+<div id="tab-live" class="tabpane" hidden>
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">Device</h3>
+      <span class="pill" id="statePill">OFFLINE</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button type="button" class="btn primary" id="btnConnect">Connect ESP32 (USB)</button>
+      <label class="inline" for="baud">Baud
+        <select id="baud"><option>115200</option><option selected>921600</option></select>
+      </label>
+      <button type="button" class="btn" id="btnDemo">Run demo device</button>
+      <button type="button" class="btn" id="btnDisconnect" disabled>Stop</button>
+    </div>
+    <div class="portlist" id="portList" hidden></div>
+    <p class="note" id="connStatus" style="margin:12px 0 0">Not connected. Run the demo device to try the station without hardware. It uses the current Simulator settings.</p>
+    <div class="devlog" id="devlog"></div>
+  </section>
+
+  <div class="gauges">
+    <div class="g"><div class="k">Burst chamber</div><div class="v" id="l_pc">–</div></div>
+    <div class="g"><div class="k">Vacuum tank</div><div class="v" id="l_pt">–</div></div>
+    <div class="g"><div class="k">Food core</div><div class="v" id="l_tf">–</div></div>
+    <div class="g"><div class="k">Batch mass</div><div class="v" id="l_m">–</div></div>
+  </div>
+
+  <section class="panel">
+    <h3>Live — last 30 seconds</h3>
+    <canvas class="plot" id="ov"></canvas>
+    <div class="legend"><span><b style="background:var(--amber)"></b>Chamber kPa</span><span><b style="background:var(--teal)"></b>Tank kPa</span><span><b style="background:var(--bad)"></b>Food °C (right axis)</span></div>
+  </section>
+
+  <section class="panel">
+    <h3>Burst — measured vs simulated</h3>
+    <canvas class="plot" id="bc"></canvas>
+    <div class="legend"><span><b style="background:var(--amber)"></b>Chamber, measured</span><span><b style="background:var(--teal)"></b>Tank, measured</span><span><b style="background:var(--muted)"></b>Simulated, air only (dashed): steam from the food adds to the measured curve</span></div>
+    <div id="cmp" style="margin-top:14px"><p class="note">Waiting for a burst. It's detected from the device's BURST state, or from a chamber drop of more than 15 kPa within 100 ms.</p></div>
+  </section>
+
+  <section class="panel">
+    <h3>Save this batch</h3>
+    <form class="form" id="batchForm">
+      <label for="b_recipe" class="wide">Recipe / food<input type="text" id="b_recipe" placeholder="e.g. Apple slices, 3 mm, pre-dried 2 h"></label>
+      <label for="b_m0">Mass before (g)<input type="number" id="b_m0" step="0.1"></label>
+      <label for="b_m1">Mass after (g)<input type="number" id="b_m1" step="0.1"></label>
+      <label for="b_v0">Volume before (mL)<input type="number" id="b_v0" step="1"></label>
+      <label for="b_v1">Volume after (mL)<input type="number" id="b_v1" step="1"></label>
+      <label for="b_crunch">Crunch score
+        <select id="b_crunch"><option value="">–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+      </label>
+      <label for="b_notes" class="wide">Notes<textarea id="b_notes" rows="2" placeholder="Colour, taste, collapse, burnt edges…"></textarea></label>
+      <div class="row wide">
+        <button type="submit" class="btn primary">Save batch</button>
+        <button type="button" class="btn" id="btnRawCsv">Export raw run (CSV)</button>
+        <span class="note" id="saveMsg"></span>
+      </div>
+    </form>
+    <p class="note">Measure volume by dropping the food into a measuring cup of rice or seeds and reading how much the level rises. Expansion = after ÷ before.</p>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">Batch log</h3>
+      <button type="button" class="btn" id="btnLogCsv">Export log (CSV)</button>
+    </div>
+    <div class="tablewrap" style="margin-top:10px">
+      <table>
+        <thead><tr><th>Date</th><th>Recipe</th><th style="text-align:right">Food °C</th><th style="text-align:right">Drop ms meas / sim</th><th style="text-align:right">Final kPa</th><th style="text-align:right">Expansion</th><th style="text-align:right">Mass loss</th><th style="text-align:right">Crunch</th><th></th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Device protocol</h3>
+    <p class="note" style="max-width:none">The ESP32 sends one line per sample over USB serial. Lines starting with <code>D,</code> are data; any other line shows up in the device log above. Send at 1 kHz during the burst and 20–100 Hz otherwise.</p>
+    <pre class="code">D,&lt;millis&gt;,&lt;chamber kPa&gt;,&lt;tank kPa&gt;,&lt;food °C&gt;,&lt;mass g&gt;,&lt;STATE&gt;
+D,152340,101.28,2.95,84.6,150.2,HEAT
+
+// ESP32 (Arduino)
+Serial.printf("D,%lu,%.2f,%.2f,%.1f,%.1f,%s\n", millis(), pc, pt, tf, mass, state);</pre>
+    <p class="note">States: EVACUATE, LOAD, HEAT, BURST, DRY, VENT, IDLE.</p>
+  </section>
+</div>
+</div>
+
 <script>
 const $=id=>document.getElementById(id);
 const ids=["m","x","t","vc","vt","pt","d","q"];
@@ -342,5 +461,6 @@ ids.forEach(i=>$(i).addEventListener("input",run));
 document.querySelectorAll("[data-p]").forEach(b=>b.addEventListener("click",()=>{const p=presets[b.dataset.p];ids.forEach(i=>$(i).value=p[i]);run();}));
 run();
 </script>
+<script src="live.js"></script>
 </body>
 </html>
