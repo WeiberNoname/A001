@@ -122,6 +122,18 @@ pre.code{font:12px var(--mono);background:var(--ground);border:1px solid var(--l
 .meq{font:13px var(--mono);color:var(--teal);background:var(--ground);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:14px 0 0}
 .mnums div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding:5px 0;font-size:13px}
 .mnums b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:600 12px var(--mono);background:var(--surface);color:var(--muted);border:0;padding:8px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--teal);color:var(--surface)}
+.seg button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.m3d{position:relative;width:100%;aspect-ratio:2/1;min-height:320px;border-radius:4px;overflow:hidden;cursor:grab;touch-action:none}
+.m3d:active{cursor:grabbing}
+.m3d canvas{display:block}
+.m3labels{position:absolute;inset:0;pointer-events:none}
+.m3label{position:absolute;left:0;top:0;font:600 11px var(--mono);padding:3px 7px;border-radius:3px;background:var(--surface);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.m3label.hot{background:var(--teal);color:var(--surface);border-color:var(--teal)}
+.m3label.warm{background:var(--amber);color:var(--surface);border-color:var(--amber)}
+.m3hint{margin:0}
 td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:pointer;padding:0}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
 </style>
@@ -151,6 +163,10 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
           <select id="mSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
         </label>
         <label class="inline" for="mSlow"><input type="checkbox" id="mSlow" checked> Slow-motion burst</label>
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" data-view="2d" aria-pressed="true">2D</button><button type="button" data-view="3d" aria-pressed="false">3D</button>
+        </div>
+        <button type="button" class="btn" id="m3dReset" hidden>Reset view</button>
       </div>
       <div class="row">
         <span class="note">Try:</span>
@@ -164,7 +180,10 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
       <button type="button" data-ph="0">1 Evacuate</button><button type="button" data-ph="1">2 Load</button><button type="button" data-ph="2">3 Heat</button><button type="button" data-ph="3">4 Burst</button><button type="button" data-ph="4">5 Dry</button><button type="button" data-ph="5">6 Vent</button>
     </div>
     <div class="mbar"><i id="mProgress"></i></div>
-    <div class="machinewrap"><canvas id="machineCanvas" aria-label="Animated cutaway of the vacuum burst machine"></canvas></div>
+    <div class="machinewrap" id="m2dWrap"><canvas id="machineCanvas" aria-label="Animated cutaway of the vacuum burst machine"></canvas></div>
+    <div class="m3d" id="m3d" hidden aria-label="3D model of the machine. Drag to rotate, scroll to zoom."></div>
+    <p class="note" id="m3dNote" hidden>3D needs WebGL, which isn't available here. The 2D view shows the same simulation.</p>
+    <p class="note m3hint">3D: drag to rotate, scroll to zoom.</p>
   </section>
   <section class="mexplain">
     <div class="panel">
@@ -417,6 +436,7 @@ Serial.printf("D,%lu,%.2f,%.2f,%.1f,%.1f,%s\n", millis(), pc, pt, tf, mass, stat
 </div>
 </div>
 
+<script src="node_modules/three/build/three.min.js"></script>
 <script src="physics.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -483,6 +503,7 @@ document.querySelectorAll("[data-p]").forEach(b=>b.addEventListener("click",()=>
 run();
 </script>
 <script src="live.js"></script>
+<script src="machine3d.js"></script>
 <script src="machine.js"></script>
 </body>
 </html>

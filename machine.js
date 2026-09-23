@@ -377,8 +377,20 @@
   let ph = 0, phT = 0, playing = false, last = 0, cur;
   const speedSel = $('mSpeed');
 
+  let view = '2d';
+  const has3D = () => window.Machine3D && Machine3D.init($('m3d'));
+  function setView(nv) {
+    if (nv === '3d' && !has3D()) { $('m3dNote').hidden = false; return; }
+    view = nv;
+    $('m2dWrap').hidden = view !== '2d'; $('m3d').hidden = view !== '3d'; $('m3dReset').hidden = view !== '3d';
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+    if (view === '3d') Machine3D.reset(cur);
+    else resetParticles(cur);
+  }
+
   function jump(toPh) {
     ph = toPh; phT = 0; cur = state(ph, 0); resetParticles(cur); trail = []; updateText(true);
+    if (view === '3d') Machine3D.reset(cur);
   }
   function restart() { prepare(); jump(0); }
 
@@ -423,16 +435,20 @@
           else { phT = showMs(ph); playing = false; $('mPlay').textContent = 'Play'; }
         }
         cur = state(ph, phT);
-        balance(cur);
+        if (view === '2d') balance(cur);
         const lt = trail[trail.length - 1];
         if (!lt || Math.abs(lt[0] - cur.tf) > 0.2 || Math.abs(lt[1] - cur.pc) > 0.3) {
           trail.push([cur.tf, Math.min(110, cur.pc)]);
           if (trail.length > 600) trail.shift();
         }
       }
-      moveParticles(realDt, slow);
-      if (cv.clientWidth && Math.abs(cv.clientWidth / W - scale) > 0.001) sizeCanvas();
-      draw(cur, playing ? realDt : 0, slow && playing);
+      if (view === '3d') {
+        Machine3D.render(cur, realDt, { playing, slow, expansion: 1 + (maxExp - 1) * cur.puff * (1 - 0.05 * cur.dry) });
+      } else {
+        moveParticles(realDt, slow);
+        if (cv.clientWidth && Math.abs(cv.clientWidth / W - scale) > 0.001) sizeCanvas();
+        draw(cur, playing ? realDt : 0, slow && playing);
+      }
       drawPhaseMap(cur);
       updateText(false);
     }
@@ -462,6 +478,8 @@
   // Follow the Simulator sliders.
   SIM_IDS.forEach(i => $(i).addEventListener('change', () => { const keep = ph; prepare(); jump(keep); }));
   window.addEventListener('resize', () => { scale = 0; });
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('m3dReset').addEventListener('click', () => Machine3D && Machine3D.resetView());
 
   restart();
   requestAnimationFrame(tick);

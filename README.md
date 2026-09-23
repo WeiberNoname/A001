@@ -10,6 +10,7 @@ Adjust food load and hardware (chamber, vacuum tank, valve bore, pump) to see fi
 
 The **Machine** tab is an animated 2D cutaway of one full cycle. Air molecules drain from the chamber into the tank, the water inside the food flashes to steam and the food puffs, while valves switch, the pump spins and the heater glows.
 
+- **2D or 3D:** switch to a 3D model of the machine (three.js, bundled offline). It has a glass chamber and tank, air and steam particles, food slices that puff, a burst-valve handle that turns, a spinning pump fan, a glowing heater and live dial gauges. Drag to rotate, scroll to zoom. Both views run the same simulation.
 - **Water phase map:** the food's temperature against chamber pressure, with the boiling curve. The dot falls across the curve at the burst, then slides along it as boiling cools the food. This is the whole idea of the machine in one picture.
 - **Real-time clock:** every step shows its real duration from the physics (pump-down, heating, drying) and how much faster or slower it is being played. The burst plays 20× slower.
 - **Each step** has a plain explanation, a "watch for" hint and the formula with this batch's numbers.
