@@ -378,11 +378,13 @@
   const speedSel = $('mSpeed');
 
   let view = '2d';
+  const hasFood = () => !!window.FoodSim;
   const has3D = () => window.Machine3D && Machine3D.init($('m3d'));
   function setView(nv) {
     if (nv === '3d' && !has3D()) { $('m3dNote').hidden = false; return; }
     view = nv;
     $('m2dWrap').hidden = view !== '2d'; $('m3d').hidden = view !== '3d'; $('m3dReset').hidden = view !== '3d';
+    $('mFoodWrap').hidden = view !== 'food';
     document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
     if (view === '3d') Machine3D.reset(cur);
     else resetParticles(cur);
@@ -391,6 +393,7 @@
   function jump(toPh) {
     ph = toPh; phT = 0; cur = state(ph, 0); resetParticles(cur); trail = []; updateText(true);
     if (view === '3d') Machine3D.reset(cur);
+    if (hasFood() && toPh <= 2) FoodSim.reset();
   }
   function restart() { prepare(); jump(0); }
 
@@ -442,7 +445,11 @@
           if (trail.length > 600) trail.shift();
         }
       }
-      if (view === '3d') {
+      const fctx = { v, r, cyc, maxExp, shf };
+      if (hasFood()) FoodSim.renderTexture($('textureCanvas'), cur, fctx, playing);
+      if (view === 'food') {
+        FoodSim.render($('foodCanvas'), cur, playing ? realDt : 0, fctx);
+      } else if (view === '3d') {
         Machine3D.render(cur, realDt, { playing, slow, expansion: 1 + (maxExp - 1) * cur.puff * (1 - 0.05 * cur.dry) });
       } else {
         moveParticles(realDt, slow);
@@ -479,6 +486,15 @@
   SIM_IDS.forEach(i => $(i).addEventListener('change', () => { const keep = ph; prepare(); jump(keep); }));
   window.addEventListener('resize', () => { scale = 0; });
   document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  // Food choice sets the food's properties and typical Simulator settings.
+  $('mFood').addEventListener('change', () => {
+    const key = $('mFood').value, f = window.FoodSim && FoodSim.FOODS[key];
+    if (!f) return;
+    FoodSim.setFood(key);
+    const sc = { ...SCEN.good, ...f.sim };
+    SIM_IDS.forEach(i => { $(i).value = sc[i]; $(i).dispatchEvent(new Event('input')); });
+    restart(); playing = true; $('mPlay').textContent = 'Pause';
+  });
   $('m3dReset').addEventListener('click', () => Machine3D && Machine3D.resetView());
 
   restart();

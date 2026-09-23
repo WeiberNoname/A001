@@ -112,11 +112,13 @@ pre.code{font:12px var(--mono);background:var(--ground);border:1px solid var(--l
 .machinewrap{overflow-x:auto}
 #machineCanvas{display:block;width:100%;min-width:760px;aspect-ratio:1200/560}
 .mexplain{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.mexplain .mnowpanel{grid-column:1/-1}
+.mexplain .mnowpanel{grid-column:auto}
+#textureCanvas{display:block;width:100%;height:280px}
+#foodCanvas{display:block;width:100%;min-width:760px}
 #phaseCanvas{display:block;width:100%;height:280px}
 .mclock{font:600 12px var(--mono);color:var(--amber);margin:6px 0 0}
 .mwatch{margin:12px 0 0;padding:8px 12px;border-left:3px solid var(--teal);background:var(--ground);font-size:14px}
-.mnowpanel .mnums{display:grid;grid-template-columns:repeat(2,1fr);column-gap:24px}
+.mnowpanel .mnums{display:grid;grid-template-columns:1fr;column-gap:24px}
 @media (max-width:620px){.mnowpanel .mnums{grid-template-columns:1fr}}
 @media (max-width:860px){.mexplain{grid-template-columns:1fr}}
 .meq{font:13px var(--mono);color:var(--teal);background:var(--ground);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:14px 0 0}
@@ -164,11 +166,19 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
         </label>
         <label class="inline" for="mSlow"><input type="checkbox" id="mSlow" checked> Slow-motion burst</label>
         <div class="seg" role="group" aria-label="View">
-          <button type="button" data-view="2d" aria-pressed="true">2D</button><button type="button" data-view="3d" aria-pressed="false">3D</button>
+          <button type="button" data-view="2d" aria-pressed="true">2D</button><button type="button" data-view="3d" aria-pressed="false">3D</button><button type="button" data-view="food" aria-pressed="false">Inside the food</button>
         </div>
         <button type="button" class="btn" id="m3dReset" hidden>Reset view</button>
       </div>
       <div class="row">
+        <label class="inline" for="mFood">Food
+          <select id="mFood">
+            <option value="apple">Apple 蘋果</option>
+            <option value="taro">Taro 芋頭</option>
+            <option value="sweetpotato">Sweet potato 地瓜</option>
+            <option value="rice">Rice cake 爆米香</option>
+          </select>
+        </label>
         <span class="note">Try:</span>
         <button type="button" class="btn" data-scen="good">Good setup</button>
         <button type="button" class="btn" data-scen="slowvalve">Valve too small</button>
@@ -181,6 +191,7 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
     </div>
     <div class="mbar"><i id="mProgress"></i></div>
     <div class="machinewrap" id="m2dWrap"><canvas id="machineCanvas" aria-label="Animated cutaway of the vacuum burst machine"></canvas></div>
+    <div class="machinewrap" id="mFoodWrap" hidden><canvas id="foodCanvas" aria-label="Cross-section of one food slice, simulated cell by cell"></canvas></div>
     <div class="m3d" id="m3d" hidden aria-label="3D model of the machine. Drag to rotate, scroll to zoom."></div>
     <p class="note" id="m3dNote" hidden>3D needs WebGL, which isn't available here. The 2D view shows the same simulation.</p>
     <p class="note m3hint">3D: drag to rotate, scroll to zoom.</p>
@@ -198,6 +209,11 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
       <h3>Water phase map</h3>
       <canvas id="phaseCanvas" aria-label="Food temperature against chamber pressure, with the boiling curve"></canvas>
       <p class="note" style="margin:8px 0 0">The red dot is the water inside the food. Above the boiling curve it stays liquid; once the dot is below the curve, it boils. The burst gets there by dropping the pressure, not by heating.</p>
+    </div>
+    <div class="panel">
+      <h3>Texture map (glass transition)</h3>
+      <canvas id="textureCanvas" aria-label="Food temperature against moisture, with the glass transition curve"></canvas>
+      <p class="note" style="margin:8px 0 0">Above the Tg curve the cell walls are rubbery: they stretch, so the food can puff. Below it they are glassy: rigid, so the snack is crunchy. Water lowers Tg (Gordon–Taylor equation). The recipe is to puff while rubbery, then dry until the dot is well below the curve at room temperature.</p>
     </div>
     <div class="panel mnowpanel">
       <h3>Right now</h3>
@@ -504,6 +520,7 @@ run();
 </script>
 <script src="live.js"></script>
 <script src="machine3d.js"></script>
+<script src="food.js"></script>
 <script src="machine.js"></script>
 </body>
 </html>

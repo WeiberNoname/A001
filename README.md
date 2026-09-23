@@ -17,6 +17,23 @@ The **Machine** tab is an animated 2D cutaway of one full cycle. Air molecules d
 - **Energy readout:** heat stored above the boiling point, and how much water it can boil.
 - **"Try" buttons** show what goes wrong with a valve that's too small, food that's too cold, or a tank that's too small.
 
+## Inside the food
+
+The Machine tab's **Inside the food** view simulates the food itself: a cross-section of one slice, cell by cell, through the whole cycle. Choose **Apple, Taro, Sweet potato or Rice cake (爆米香)**; each sets its own food properties and typical Simulator settings.
+
+- **Heating:** the surface warms before the centre, and the water in each cell stays liquid.
+- **Burst:** each cell's water flashes to steam and inflates the cell. Only about 10 % of the water boils, but at ~13 kPa each gram becomes ~11 litres of steam. Cells stretched past their limit rupture and vent steam; those become the open pores.
+- **Drying:** a drying front moves in from the surface. Cell water follows the real mass balance, so the cells always add up to the slice's true moisture.
+- **Texture:** cell walls are drawn **rubbery** (thin, pale, stretchy) or **glassy** (thick, golden, rigid). The panel shows moisture, volume, porosity, ruptured cells, Tg, and a verdict on how the snack will feel at room temperature: crunchy, just crisp, leathery or soft.
+
+The **texture map** plots food temperature against moisture with the **glass transition** curve from the Gordon–Taylor equation:
+
+Tg = (w_s·Tg_s + k·w_w·Tg_w) / (w_s + k·w_w), with Tg_w = −135 °C for water.
+
+Above the curve the walls are rubbery, so the food can puff. Below it they are glassy, so the snack is crunchy. The recipe is to puff while hot and moist (rubbery), then dry until the food is well below the curve at room temperature.
+
+This is why sugary apple needs drying to ~5 % moisture to be only just crisp (Tg ≈ 29 °C), while starchy taro or rice sets firmly crunchy (Tg ≈ 80 °C at the same moisture). The Tg values for dry solids and the k constants are typical literature-range estimates; real products vary, so calibrate them with tests.
+
 ## Physics model
 
 All tabs share one model in [`physics.js`](physics.js).
