@@ -111,7 +111,13 @@ pre.code{font:12px var(--mono);background:var(--ground);border:1px solid var(--l
 .mbar i{display:block;height:100%;width:0;background:var(--amber)}
 .machinewrap{overflow-x:auto}
 #machineCanvas{display:block;width:100%;min-width:760px;aspect-ratio:1200/560}
-.mexplain{display:grid;grid-template-columns:3fr 2fr;gap:20px}
+.mexplain{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.mexplain .mnowpanel{grid-column:1/-1}
+#phaseCanvas{display:block;width:100%;height:280px}
+.mclock{font:600 12px var(--mono);color:var(--amber);margin:6px 0 0}
+.mwatch{margin:12px 0 0;padding:8px 12px;border-left:3px solid var(--teal);background:var(--ground);font-size:14px}
+.mnowpanel .mnums{display:grid;grid-template-columns:repeat(2,1fr);column-gap:24px}
+@media (max-width:620px){.mnowpanel .mnums{grid-template-columns:1fr}}
 @media (max-width:860px){.mexplain{grid-template-columns:1fr}}
 .meq{font:13px var(--mono);color:var(--teal);background:var(--ground);border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:14px 0 0}
 .mnums div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding:5px 0;font-size:13px}
@@ -164,13 +170,20 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
     <div class="panel">
       <div class="eyebrow" id="mStep"></div>
       <h2 id="mTitle"></h2>
+      <p class="mclock" id="mClock"></p>
       <p id="mText" style="margin:8px 0 0;max-width:68ch"></p>
+      <p class="mwatch"><b>Watch for:</b> <span id="mWatch"></span></p>
       <p class="meq" id="mEq"></p>
     </div>
     <div class="panel">
+      <h3>Water phase map</h3>
+      <canvas id="phaseCanvas" aria-label="Food temperature against chamber pressure, with the boiling curve"></canvas>
+      <p class="note" style="margin:8px 0 0">The red dot is the water inside the food. Above the boiling curve it stays liquid; once the dot is below the curve, it boils. The burst gets there by dropping the pressure, not by heating.</p>
+    </div>
+    <div class="panel mnowpanel">
       <h3>Right now</h3>
       <div class="mnums" id="mNums"></div>
-      <p class="note" style="margin:12px 0 0">Uses the Simulator tab's settings. The "Try" buttons change them.</p>
+      <p class="note" style="margin:12px 0 0">Uses the Simulator tab's settings; the "Try" buttons change them. Assumes a 300 W heater and 200 W while drying, 60 % of it reaching the food.</p>
     </div>
   </section>
 </div>
@@ -208,9 +221,9 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
       <div class="index"><div class="bignum" id="pi">–</div><div class="meter"><i id="pim" style="width:0"></i></div><div id="grade" style="font:600 14px var(--mono)"></div></div>
     </div>
     <div class="gauges">
-      <div class="g"><div class="k">Final pressure</div><div class="v" id="r_p">–</div></div>
+      <div class="g"><div class="k">Lowest chamber pressure</div><div class="v" id="r_p">–</div></div>
       <div class="g"><div class="k">Boiling point there</div><div class="v" id="r_ts">–</div></div>
-      <div class="g"><div class="k">Pressure drop time (90%)</div><div class="v" id="r_t90">–</div></div>
+      <div class="g"><div class="k">Drop time (chamber ≈ tank)</div><div class="v" id="r_t90">–</div></div>
       <div class="g"><div class="k">Water flashed</div><div class="v" id="r_ms">–</div></div>
     </div>
     <div class="panel">
@@ -302,7 +315,12 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
 
 <section class="panel">
   <h3>Model assumptions</h3>
-  <p class="note" style="max-width:none">Air flows through the valve as an isothermal orifice (choked or subsonic, discharge coefficient 0.7). The water that flashes is the sensible heat above the boiling point at the final pressure, cₚ(T − Tsat)/h_fg, capped by the food's water content. Food cₚ is 3.5 kJ/kg·K and food density 0.8 g/mL. The steam the burst makes is added to the final pressure, so this is a worst case: walls and the pump remove steam in reality. Boiling points come from the Antoine equation. The puff index combines superheat with the ratio of drop time to a 0.15 s vapour-escape time. It is a starting point: fit it to measured expansion ratios from Prototype 1.</p>
+  <div class="note" style="max-width:none;display:flex;flex-direction:column;gap:6px">
+    <p style="margin:0"><b>Solved step by step in time (20–100 µs steps over 1.5 s).</b> The chamber and tank each hold air and water vapour, treated as ideal gases at 20 °C. The mixture flows through the valve as a compressible orifice flow, choked or subsonic, with discharge coefficient 0.7.</p>
+    <p style="margin:0"><b>Flash evaporation.</b> Whenever the food is hotter than the boiling point at the chamber pressure (Antoine equation), water flashes to steam with a 20 ms time constant. The latent heat h_fg(T) = 2501 − 2.37·T kJ/kg comes out of the food, so the food cools toward the boiling point. Food specific heat follows Siebel's equation, cₚ = 1.675 + 2.51·x kJ/kg·K, updated as water leaves.</p>
+    <p style="margin:0"><b>Steam removal.</b> Vapour above the saturation pressure of 25 °C walls (3.2 kPa) condenses with a 0.3 s time constant, and the pump keeps removing tank gas at its rated speed.</p>
+    <p style="margin:0"><b>Assumed values to check against Prototype 1:</b> discharge coefficient, flash and condensation time constants, food density 0.8 g/mL, wall temperature. The puff index is a heuristic combining superheat, drop time against a 0.15 s vapour-escape time, and moisture. Fit it to measured expansion ratios.</p>
+  </div>
 </section>
 </div>
 
@@ -399,6 +417,7 @@ Serial.printf("D,%lu,%.2f,%.2f,%.1f,%.1f,%s\n", millis(), pc, pt, tf, mass, stat
 </div>
 </div>
 
+<script src="physics.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const ids=["m","x","t","vc","vt","pt","d","q"];
@@ -409,70 +428,10 @@ const presets={
   rice:{m:200,x:0.18,t:95,vc:5,vt:60,pt:2,d:40,q:8},
   small:{m:100,x:0.35,t:80,vc:3,vt:20,pt:8,d:12,q:4}
 };
-function tsat(PkPa){ // Antoine, water; returns °C
-  const mm=PkPa*7.50062; const lg=Math.log10(Math.max(mm,0.01));
-  let T=1730.63/(8.07131-lg)-233.426;
-  if(T>99) T=1810.94/(8.14019-lg)-244.485;
-  return T;
-}
-function psat(T){ // kPa
-  const [A,B,C]=T<99?[8.07131,1730.63,233.426]:[8.14019,1810.94,244.485];
-  return Math.pow(10,A-B/(C+T))/7.50062;
-}
-function simulate(v){
-  const R=287,Tg=293.15,k=1.4,Cd=0.7;
-  const foodL=v.m/0.8/1000;
-  const Vc=Math.max(v.vc-foodL,0.2)/1000, Vt=v.vt/1000;
-  const A=Math.PI*Math.pow(v.d/1000,2)/4;
-  let mc=101325*Vc/(R*Tg), mt=v.pt*1000*Vt/(R*Tg);
-  const crit=Math.pow(2/(k+1),k/(k-1)), chokeK=Math.pow(2/(k+1),(k+1)/(2*(k-1)));
-  const Pc0=101325, Peq=(mc+mt)*R*Tg/(Vc+Vt);
-  const target=Pc0-0.9*(Pc0-Peq);
-  let t=0,dt=2e-5,t90=null,maxRate=0;
-  const pts=[];let tEnd=5,sampleEvery=0.002,nextS=0;
-  while(t<tEnd){
-    const Pc=mc*R*Tg/Vc, Pt=mt*R*Tg/Vt;
-    if(t>=nextS){pts.push([t,Pc/1000,Pt/1000]);nextS+=sampleEvery;}
-    const up=Math.max(Pc,Pt), dn=Math.min(Pc,Pt), r=dn/up;
-    let md;
-    if(r<=crit) md=Cd*A*up*Math.sqrt(k/(R*Tg))*chokeK;
-    else md=Cd*A*up*Math.sqrt(2*k/(R*Tg*(k-1))*(Math.pow(r,2/k)-Math.pow(r,(k+1)/k)));
-    const dm=Math.min(md*dt,Math.abs(mc-Peq*Vc/(R*Tg)));
-    const sign=Pc>Pt?1:-1; mc-=sign*dm; mt+=sign*dm;
-    const rate=md*R*Tg/Vc; if(rate>maxRate) maxRate=rate;
-    if(t90===null && Pc<=target){t90=t; tEnd=Math.min(5,Math.max(t*4,0.05));}
-    t+=dt;
-    if(t>0.02) dt=5e-5;
-  }
-  if(t90===null) t90=5;
-  // steam equilibrium (upper bound)
-  const mkg=v.m/1000, water=mkg*v.x, cp=3.5, hfg=2380;
-  const V=Vc+Vt, Pair=Peq;
-  let P=Pair,ms=0,Ts=tsat(P/1000);
-  for(let i=0;i<80;i++){
-    Ts=tsat(P/1000);
-    ms=v.t>Ts?Math.min(mkg*cp*(v.t-Ts)/hfg,water):0;
-    const Pn=Pair+ms*461.5*(Ts+273.15)/V;
-    P=0.5*P+0.5*Pn;
-  }
-  Ts=tsat(P/1000);
-  const superheat=v.t-Ts;
-  const rateF=1/(1+t90/0.15);
-  const shF=Math.max(0,Math.min(1,superheat/40));
-  const moistF=v.x<0.12?v.x/0.12:(v.x>0.6?Math.max(0.3,1-(v.x-0.6)*1.8):1);
-  const idx=Math.round(100*Math.sqrt(shF*rateF)*moistF);
-  // lid, pump
-  const dia=Math.cbrt(4*v.vc/1000/Math.PI);
-  const lidKgf=(101325-P)*Math.PI*dia*dia/4/9.81;
-  const S=v.q/3600;
-  const pumpT=(V/S)*Math.log(Math.max(P,v.pt*1000*1.0001)/(v.pt*1000));
-  const firstPump=(Vt/S)*Math.log(101325/(v.pt*1000));
-  const pBoilFood=psat(v.t);
-  return {pts,t90,P:P/1000,Pair:Pair/1000,Ts,ms,water,superheat,idx,lidKgf,pumpT,firstPump,maxRate,pBoilFood,dia};
-}
 function chart(r){
   const W=640,H=260,L=46,Rm=14,T=14,B=34;
-  const tmax=r.pts[r.pts.length-1][0], pmax=110;
+  const tmax=Math.min(PHYS.BURST_S,Math.max(0.2,6*r.t90)), pmax=110;
+  r={...r,pts:r.pts.filter(p=>p[0]<=tmax+1e-9)};
   const x=t=>L+(t/tmax)*(W-L-Rm), y=p=>T+(1-p/pmax)*(H-T-B);
   const line=i=>r.pts.map((p,j)=>(j?"L":"M")+x(p[0]).toFixed(1)+" "+y(p[i]).toFixed(1)).join(" ");
   let g="";
@@ -497,26 +456,26 @@ function run(){
   $("pi").textContent=r.idx;$("pim").style.width=r.idx+"%";
   $("grade").textContent=r.idx>=70?"STRONG PUFF":r.idx>=45?"MODERATE":r.idx>=20?"WEAK":"NO PUFF";
   $("grade").style.color=r.idx>=70?"var(--good)":r.idx>=45?"var(--teal)":r.idx>=20?"var(--warn)":"var(--bad)";
-  $("r_p").innerHTML=r.P.toFixed(1)+"<span>kPa</span>";
+  $("r_p").innerHTML=r.Pmin.toFixed(1)+"<span>kPa</span>";
   $("r_ts").innerHTML=r.Ts.toFixed(1)+"<span>°C</span>";
   $("r_t90").innerHTML=(r.t90*1000).toFixed(0)+"<span>ms</span>";
   $("r_ms").innerHTML=r.ms*1000>=10?(r.ms*1000).toFixed(0)+"<span>g</span>":(r.ms*1000).toFixed(1)+"<span>g</span>";
   chart(r);
   const a=[];
   const ratio=v.vt/v.vc;
-  if(r.superheat<10) a.push(["bad",`Only ${r.superheat.toFixed(0)} °C of superheat. Food at ${v.t} °C barely boils at ${r.P.toFixed(1)} kPa. Heat the food more, use a bigger tank, or pump the tank lower.`]);
+  if(r.superheat<10) a.push(["bad",`Only ${r.superheat.toFixed(0)} °C of superheat. Food at ${v.t} °C barely boils at ${r.Pmin.toFixed(1)} kPa. Heat the food more, use a bigger tank, or pump the tank lower.`]);
   else if(r.superheat<30) a.push(["warn",`${r.superheat.toFixed(0)} °C of superheat: moderate. Aim for 35 °C or more for a strong puff.`]);
   else a.push(["",`${r.superheat.toFixed(0)} °C of superheat. Water in the food flashes hard.`]);
   if(r.t90>0.3) a.push(["bad",`The drop takes ${(r.t90*1000).toFixed(0)} ms, which is too slow: vapour leaks out instead of puffing. Use a bigger valve bore (try ${Math.min(80,Math.round(v.d*1.6))} mm).`]);
   else if(r.t90>0.12) a.push(["warn",`The drop takes ${(r.t90*1000).toFixed(0)} ms. That's usable, but a bigger valve would make the puff sharper.`]);
   else a.push(["",`A ${(r.t90*1000).toFixed(0)} ms drop is fast enough for a sharp puff.`]);
   if(ratio<8) a.push(["warn",`The tank is only ${ratio.toFixed(1)}× the chamber volume, so the air from the chamber raises the final pressure a lot. Aim for 10× or more.`]);
-  if(r.P-r.Pair>2) a.push(["warn",`Steam from the batch adds up to ${(r.P-r.Pair).toFixed(1)} kPa. Keep the pump running during the burst or use smaller batches.`]);
+  if(r.Pmin-r.Pair>2) a.push(["warn",`Steam from the food holds the chamber ${(r.Pmin-r.Pair).toFixed(1)} kPa above where air alone would settle, which cuts the superheat. A bigger or colder tank, or smaller batches, help.`]);
   if(v.x>0.6) a.push(["warn","High moisture: pre-dry to 25–45% so the structure can hold the puff and set crisp."]);
   if(v.x<0.12) a.push(["warn","Very low moisture: not enough water to drive the expansion."]);
   a.push(["",`The lid carries about ${Math.round(r.lidKgf)} kgf under vacuum (for a ${Math.round(r.dia*1000)} mm opening). Only use a rated lid.`]);
   $("adv").innerHTML=a.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
-  const det=[["Air-only final pressure",r.Pair.toFixed(1)+" kPa"],["Water in batch",(r.water*1000).toFixed(0)+" g"],["Flashed share",(r.water?100*r.ms/r.water:0).toFixed(1)+"%"],["Peak pressure drop rate",(r.maxRate/1000).toFixed(0)+" kPa/s"],["Tank re-pump between batches",r.pumpT.toFixed(0)+" s"],["First pump-down",(r.firstPump/60).toFixed(1)+" min"],["Tank : chamber ratio",ratio.toFixed(1)+"×"],["Food volume",(v.m/0.8).toFixed(0)+" mL"],["Chamber opening",Math.round(r.dia*1000)+" mm"]];
+  const det=[["Air-only equilibrium",r.Pair.toFixed(1)+" kPa"],["Chamber after 1.5 s",r.P.toFixed(1)+" kPa"],["Food temp after burst",r.TfEnd.toFixed(1)+" °C"],["Steam condensed on walls",(r.condensed*1000).toFixed(1)+" g"],["Water in batch",(r.water*1000).toFixed(0)+" g"],["Flashed share",(r.water?100*r.ms/r.water:0).toFixed(1)+"%"],["Peak pressure drop rate",(r.maxRate/1000).toFixed(0)+" kPa/s"],["Tank re-pump between batches",r.pumpT.toFixed(0)+" s"],["First pump-down",(r.firstPump/60).toFixed(1)+" min"],["Tank : chamber ratio",ratio.toFixed(1)+"×"],["Food volume",(v.m/0.8).toFixed(0)+" mL"],["Chamber opening",Math.round(r.dia*1000)+" mm"]];
   $("det").innerHTML=det.map(([k,val])=>`<div><span>${k}</span><b>${val}</b></div>`).join("");
 }
 ids.forEach(i=>$(i).addEventListener("input",run));

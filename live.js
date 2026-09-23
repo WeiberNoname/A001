@@ -66,9 +66,9 @@
   function analyseBurst() {
     const win = run.filter(s => s.t >= burst.t0 && s.t <= burst.t0 + 1500);
     if (win.length < 3) return;
-    const pmin = Math.min(...win.map(s => s.pc));
-    const target = burst.p0 - 0.9 * (burst.p0 - pmin);
-    const hit = win.find(s => s.pc <= target);
+    // Drop time: until 90 % of the chamber–tank difference is gone (same definition as the simulation).
+    const b0 = win[0], dp0 = b0.pc - b0.pt;
+    const hit = win.find(s => s.t > burst.t0 && s.pc - s.pt < 0.1 * dp0);
     const tail = win.filter(s => s.t >= burst.t0 + 1300);
     const pFinal = tail.reduce((a, s) => a + s.pc, 0) / Math.max(1, tail.length);
     const v = settings();
@@ -91,7 +91,7 @@
     };
     $('cmp').innerHTML = `<div class="tablewrap"><table>
       <thead><tr><th>Burst result</th><th style="text-align:right">Measured</th><th style="text-align:right">Simulated</th><th style="text-align:right">Difference</th></tr></thead>
-      <tbody>${row('Pressure drop time (90%)', m.t90, m.simT90, 'ms', 0)}${row('Final chamber pressure', m.pFinal, m.simP, 'kPa')}</tbody></table></div>
+      <tbody>${row('Drop time (chamber ≈ tank)', m.t90, m.simT90, 'ms', 0)}${row('Final chamber pressure', m.pFinal, m.simP, 'kPa')}</tbody></table></div>
       <p class="note">Simulated with the Simulator tab's hardware settings, using the measured food temperature (${isFinite(m.foodC) ? m.foodC.toFixed(1) : '–'} °C) and mass. A measured drop much slower than simulated usually means a restriction in the valve or hose.</p>`;
     if (last() && isFinite(last().mass)) $('b_m1').value = last().mass.toFixed(1);
   }
@@ -200,35 +200,14 @@
   $('btnDemo').addEventListener('click', () => {
     const v = settings(), r = simulate(v);
     const phases = [['EVACUATE', 6000], ['LOAD', 1000], ['HEAT', 7000], ['BURST', 1500], ['DRY', 6000], ['VENT', 2500]];
-    const cool = r.Ts + 3, steam = r.P - r.Pair;
-    const massAfterBurst = v.m - r.ms * 1000 * (1 - Math.exp(-1500 / 200));
-    const dryLoss = Math.max(0, r.water - r.ms) * 1000 * 0.3;
-    const pDryEnd = v.pt + (r.P - v.pt) * Math.exp(-6000 / 1500);
-    const tfDryEnd = cool + (55 - cool) * (1 - Math.exp(-6000 / 2000));
+    // Same cycle model as the Machine tab. Slow phases are time-lapsed; the burst runs in real time.
+    const cyc = cycleModel(v, r);
     const noise = a => (Math.random() - 0.5) * a;
-    const simAt = ms => { const p = r.pts; return p[Math.min(p.length - 1, Math.floor(ms / 2))]; };
     let t = 0, ph = 0, phT = 0;
 
     function sample() {
-      const [name] = phases[ph];
-      let pc = 101.3, pt = 101.3, tf = 25, mass = v.m;
-      if (name === 'EVACUATE' || name === 'LOAD') {
-        pt = v.pt + (101.3 - v.pt) * Math.exp(-(name === 'LOAD' ? 6000 + phT : phT) / 1200);
-      } else if (name === 'HEAT') {
-        pt = v.pt; tf = 25 + (v.t - 25) * (1 - Math.exp(-phT / 1800));
-      } else if (name === 'BURST') {
-        const p = simAt(phT), k = 1 - Math.exp(-phT / 25);
-        pc = p[1] + steam * k; pt = p[2] + steam * k;
-        tf = v.t - (v.t - cool) * (1 - Math.exp(-phT / 200));
-        mass = v.m - r.ms * 1000 * (1 - Math.exp(-phT / 200));
-      } else if (name === 'DRY') {
-        pc = pt = v.pt + (r.P - v.pt) * Math.exp(-phT / 1500);
-        tf = cool + (55 - cool) * (1 - Math.exp(-phT / 2000));
-        mass = massAfterBurst - dryLoss * (1 - Math.exp(-phT / 2500));
-      } else if (name === 'VENT') {
-        pc = 101.3 - (101.3 - pDryEnd) * Math.exp(-phT / 600); pt = pDryEnd;
-        tf = tfDryEnd; mass = massAfterBurst - dryLoss * (1 - Math.exp(-6000 / 2500));
-      }
+      const [name, ms] = phases[ph];
+      const { pc, pt, tf, mass } = cyc.at(name, Math.min(1, phT / ms));
       return { t, pc: pc + noise(0.3), pt: pt + noise(0.2), tf: tf + noise(0.3), mass: mass + noise(0.4), state: name };
     }
 

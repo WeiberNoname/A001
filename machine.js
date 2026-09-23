@@ -6,67 +6,59 @@
   const settings = () => Object.fromEntries(SIM_IDS.map(i => [i, parseFloat($(i).value)]));
   const W = 1200, H = 560, ATM = 101.3;
 
+  // show: how long each step plays on screen (ms at 1×). Real durations come from the physics.
+  const fmtT = s => s < 1 ? (s * 1000).toFixed(0) + ' ms' : s < 90 ? s.toFixed(s < 10 ? 1 : 0) + ' s' : Math.floor(s / 60) + ' min ' + String(Math.round(s % 60)).padStart(2, '0') + ' s';
   const PHASES = [
-    { name: 'EVACUATE', ms: 6000, title: 'Empty the tank',
-      text: 'The pump pulls air out of the big vacuum tank. The burst valve is closed, so the chamber with the food stays at normal air pressure. The tank is storing "emptiness" for later.',
-      eq: 'Tank pressure falls exponentially: p(t) = p₀ · e^(−S·t / V)' },
-    { name: 'LOAD', ms: 2000, title: 'Load the food',
-      text: 'Food goes on the tray, the temperature probe goes into one piece, and the lid closes. The tank waits under vacuum.',
-      eq: 'Each piece holds water inside its cells: that water is the fuel for the puff.' },
-    { name: 'HEAT', ms: 8000, title: 'Heat the food at normal pressure',
-      text: 'The heater warms the food. At normal pressure (101 kPa) water only boils at 100 °C, so the water inside the cells stays liquid even at 85 °C. It is quietly storing heat. Watch the thermometer: the food line stays below the "water boils" line.',
-      eq: 'Boiling point depends on pressure. At 101 kPa, 100 °C. At 5 kPa, 33 °C.' },
-    { name: 'BURST', ms: 1500, title: 'The burst: 爆',
-      text: 'The burst valve opens. Air rushes from the chamber into the empty tank, and the chamber pressure crashes in a fraction of a second. Suddenly water boils far below the food\'s temperature. The stored heat turns water into steam instantly, inside every cell at once. The steam inflates the cells before it can escape, so the food puffs.',
-      eq: 'Water flashed = m · cₚ · (T_food − T_boil) / h_fg     (h_fg ≈ 2380 kJ/kg)' },
-    { name: 'DRY', ms: 6000, title: 'Dry and set the crunch',
-      text: 'The pump keeps the pressure low while gentle heat drives out the remaining water. The stretched cell walls dry out and harden into a light, airy structure. That is the "fried" crunch, made without oil.',
-      eq: 'Low pressure lets water evaporate at ~40–55 °C, so colour and nutrients survive.' },
-    { name: 'VENT', ms: 3000, title: 'Let the air back in, gently',
-      text: 'The burst valve closes and air bleeds back into the chamber through a needle valve. Slowly, so the dry, puffed structure doesn\'t get crushed. Then the lid can open.',
-      eq: 'Force on the lid under vacuum = Δp × area, which is why the lid must be vacuum-rated.' }
+    { name: 'EVACUATE', show: 6000, title: 'Empty the tank',
+      text: () => 'The pump pulls air out of the big vacuum tank. The burst valve is closed, so the chamber with the food stays at normal air pressure. The tank is storing "emptiness" for later.',
+      watch: 'Dots in the tank leave through the pump; the tank gauge falls.',
+      eq: () => `Pump-down time t = (V/S)·ln(p₀/p) = (${v.vt} L ÷ ${v.q} m³/h)·ln(101.3/${v.pt}) ≈ ${fmtT(cyc.dur.EVACUATE)}` },
+    { name: 'LOAD', show: 2500, title: 'Load the food',
+      text: () => 'Food goes on the tray, the temperature probe goes into one piece, and the lid closes. The tank waits under vacuum.',
+      watch: 'Nothing moves. The tank holds its vacuum.',
+      eq: () => `This batch: ${v.m} g at ${Math.round(v.x * 100)} % water = ${(v.m * v.x).toFixed(0)} g of water, the fuel for the puff.` },
+    { name: 'HEAT', show: 8000, title: 'Heat the food at normal pressure',
+      text: () => `The heater warms the food. At normal pressure water only boils at 100 °C, so the water in the cells stays liquid even at ${v.t} °C. It is quietly storing heat.`,
+      watch: 'On the phase map the dot moves right but stays in the liquid zone, above the boiling curve.',
+      eq: () => `Heating time = m·cₚ·ΔT / P = ${(v.m / 1000).toFixed(3)} kg × ${(cpFood(v.x) / 1000).toFixed(2)} kJ/kg·K × ${(v.t - PHYS.T_START).toFixed(0)} K ÷ ${PHYS.HEATER_W * PHYS.HEAT_EFF} W ≈ ${fmtT(cyc.dur.HEAT - PHYS.HOLD_S)}, then a ${PHYS.HOLD_S} s hold` },
+    { name: 'BURST', show: 9000, title: 'The burst: 爆',
+      text: () => 'The burst valve opens. Air rushes from the chamber into the empty tank and the chamber pressure crashes. The boiling point drops far below the food\'s temperature, so the stored heat turns water into steam inside every cell at once. The steam inflates the cells before it can escape: the food puffs. Boiling takes heat out of the food, so it cools toward the new boiling point.',
+      watch: 'The dot falls straight down across the boiling curve, then slides down-left along it as the food cools.',
+      eq: () => `Water flashed = m·cₚ·(T_food − T_boil) / h_fg → ${(r.ms * 1000).toFixed(1)} g of steam; the food cools from ${v.t} °C to ${r.TfEnd.toFixed(0)} °C` },
+    { name: 'DRY', show: 7000, title: 'Dry and set the crunch',
+      text: () => 'The pump keeps the pressure low while gentle heat drives out the remaining water. The food stays cool: under vacuum it boils at a low temperature, and evaporation uses up the heater\'s energy. The stretched cell walls dry and harden into a light, airy structure. That is the "fried" crunch, made without oil.',
+      watch: 'The dot sits on the boiling curve at a low temperature: the food is boiling gently and cooling itself.',
+      eq: () => `Water to remove: ${cyc.removeDryG.toFixed(0)} g (down to ${PHYS.DRY_TARGET_X * 100} % moisture). At ${PHYS.DRY_W * PHYS.DRY_EFF} W into evaporation, h_fg ≈ 2.43 MJ/kg, that takes ≈ ${fmtT(cyc.dur.DRY)}` },
+    { name: 'VENT', show: 4000, title: 'Let the air back in, gently',
+      text: () => 'The burst valve closes and air bleeds back into the chamber through a needle valve, slowly, so the dry, puffed structure doesn\'t get crushed. Then the lid can open.',
+      watch: 'The chamber fills with dots again; the dot on the phase map rises back into the liquid zone.',
+      eq: () => `Force on the lid at the lowest pressure = Δp × area ≈ ${Math.round(r.lidKgf)} kgf, which is why the lid must be vacuum-rated. Finished batch ≈ ${cyc.finalMassG.toFixed(0)} g.` }
   ];
 
-  // ---------- cycle model (same physics as the demo device) ----------
-  let v, r, maxExp, shf;
+  // ---------- cycle (shared physics in physics.js) ----------
+  let v, r, cyc, maxExp, shf;
   function prepare() {
-    v = settings(); r = simulate(v);
-    shf = Math.max(0, Math.min(1, (v.t - r.Ts) / 40));
-    maxExp = 1 + 1.3 * r.idx / 100;
+    v = settings(); r = simulate(v); cyc = cycleModel(v, r);
+    shf = Math.max(0, Math.min(1, r.superheat / 40));
+    maxExp = 1 + 1.3 * r.idx / 100;          // expansion estimate from the puff index (calibrate)
+  }
+  const slowChk = $('mSlow');
+  const showMs = ph => PHASES[ph].name === 'BURST' && !slowChk.checked ? PHYS.BURST_S * 1000 : PHASES[ph].show;
+  // Slowed burst: the first 0.3 s plays over 2/3 of its screen time, the rest over 1/3.
+  function realFraction(ph, fShow) {
+    if (PHASES[ph].name !== 'BURST' || !slowChk.checked) return fShow;
+    const split = 0.3 / PHYS.BURST_S;
+    return fShow < 2 / 3 ? fShow * 1.5 * split : split + (fShow - 2 / 3) * 3 * (1 - split);
   }
   function state(ph, phT) {
-    const name = PHASES[ph].name;
-    const cool = r.Ts + 3, steam = r.P - r.Pair;
-    const massAfterBurst = v.m - r.ms * 1000;
-    const dryLoss = Math.max(0, r.water - r.ms) * 1000 * 0.3;
-    const pDryEnd = v.pt + (r.P - v.pt) * Math.exp(-6000 / 1500);
-    const tfDryEnd = cool + (55 - cool) * (1 - Math.exp(-6000 / 2000));
-    const o = { name, pc: ATM, pt: ATM, tf: 25, mass: v.m, heater: 0, pump: false, burstOpen: false, ventOpen: true, puff: 0, dry: 0, flash: 0 };
-    if (name === 'EVACUATE') { o.pt = v.pt + (ATM - v.pt) * Math.exp(-phT / 1200); o.pump = true; }
-    else if (name === 'LOAD') { o.pt = v.pt + (ATM - v.pt) * Math.exp(-(6000 + phT) / 1200); }
-    else if (name === 'HEAT') {
-      o.pt = v.pt; o.tf = 25 + (v.t - 25) * (1 - Math.exp(-phT / 2000));
-      o.heater = o.tf < v.t - 1 ? 1 : 0.35; o.ventOpen = phT < PHASES[ph].ms - 150;
-    } else if (name === 'BURST') {
-      const p = r.pts[Math.min(r.pts.length - 1, Math.floor(phT / 2))], k = 1 - Math.exp(-phT / 25);
-      o.pc = p[1] + steam * k; o.pt = p[2] + steam * k;
-      o.tf = v.t - (v.t - cool) * (1 - Math.exp(-phT / 200));
-      o.mass = v.m - r.ms * 1000 * (1 - Math.exp(-phT / 200));
-      o.burstOpen = true; o.ventOpen = false; o.pump = true;
-      const drop = Math.max(0, Math.min(1, (ATM - o.pc) / Math.max(1, ATM - r.P)));
-      o.flash = drop * shf; o.puff = o.flash;
-    } else if (name === 'DRY') {
-      o.pc = o.pt = v.pt + (r.P - v.pt) * Math.exp(-phT / 1500);
-      o.tf = cool + (55 - cool) * (1 - Math.exp(-phT / 2000));
-      o.mass = massAfterBurst - dryLoss * (1 - Math.exp(-phT / 2500));
-      o.heater = 0.6; o.pump = true; o.burstOpen = true; o.ventOpen = false;
-      o.puff = shf; o.flash = shf; o.dry = 1 - Math.exp(-phT / 2500);
-    } else if (name === 'VENT') {
-      o.pc = ATM - (ATM - pDryEnd) * Math.exp(-phT / 700); o.pt = pDryEnd;
-      o.tf = tfDryEnd; o.mass = massAfterBurst - dryLoss * (1 - Math.exp(-6000 / 2500));
-      o.pump = true; o.puff = shf * (1 - 0.06 * (1 - Math.exp(-phT / 700))); o.flash = shf; o.dry = 1;
-    }
-    o.boil = tsat(o.pc);
+    const P = PHASES[ph], show = showMs(ph);
+    const fShow = Math.min(1, phT / show), fReal = realFraction(ph, fShow);
+    const o = cyc.at(P.name, fReal);
+    o.puff = P.name === 'BURST' ? o.flash * shf : (P.name === 'DRY' || P.name === 'VENT') ? shf : 0;
+    o.flash = P.name === 'BURST' ? o.flash : o.flash * (1 - o.dry);
+    // real seconds per screen second at 1× (burst uses the local rate of its two segments)
+    const split = 0.3 / PHYS.BURST_S;
+    o.rate = P.name === 'BURST' && slowChk.checked ? (fShow < 2 / 3 ? 0.3 / (show / 1000 * 2 / 3) : (PHYS.BURST_S - 0.3) / (show / 1000 / 3)) : o.dur / (show / 1000);
     return o;
   }
 
@@ -337,68 +329,125 @@
     label('dots ∝ pressure', 720, 534, 'left', css('--muted'), 11);
   }
 
+  // ---------- phase map: where the water in the food sits relative to boiling ----------
+  const pm = $('phaseCanvas');
+  let trail = [];
+  function drawPhaseMap(s) {
+    const dpr = window.devicePixelRatio || 1, w = pm.clientWidth, h = pm.clientHeight;
+    if (!w) return;
+    if (pm.width !== Math.round(w * dpr) || pm.height !== Math.round(h * dpr)) { pm.width = Math.round(w * dpr); pm.height = Math.round(h * dpr); }
+    const c = pm.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+    const L = 44, R = 12, T = 12, B = 34;
+    const x = t => L + t / 110 * (w - L - R), y = p => T + (1 - p / 110) * (h - T - B);
+    const curve = () => { for (let t = 0; t <= 110; t += 1) c.lineTo(x(t), y(Math.min(110, psat(t)))); };
+    c.font = '11px ' + css('--mono');
+    // regions: liquid above the curve (higher pressure / lower temperature), boiling below
+    c.beginPath(); c.moveTo(x(0), y(110)); curve(); c.lineTo(x(110), y(110)); c.closePath();
+    c.fillStyle = 'rgba(60,140,210,0.12)'; c.fill();
+    c.beginPath(); c.moveTo(x(0), y(0)); curve(); c.lineTo(x(110), y(0)); c.closePath();
+    c.fillStyle = 'rgba(200,120,40,0.10)'; c.fill();
+    // grid + axes
+    c.strokeStyle = css('--line'); c.fillStyle = css('--muted'); c.lineWidth = 1;
+    for (let p = 0; p <= 100; p += 25) { c.beginPath(); c.moveTo(L, y(p)); c.lineTo(w - R, y(p)); c.stroke(); c.textAlign = 'right'; c.fillText(p, L - 6, y(p) + 4); }
+    c.textAlign = 'center';
+    for (let t = 0; t <= 100; t += 20) c.fillText(t, x(t), h - B + 16);
+    c.fillText('food temperature °C', (L + w - R) / 2, h - 4);
+    c.save(); c.translate(11, (T + h - B) / 2); c.rotate(-Math.PI / 2); c.fillText('chamber kPa', 0, 0); c.restore();
+    // boiling curve
+    c.strokeStyle = css('--teal'); c.lineWidth = 2.5; c.beginPath();
+    for (let t = 0; t <= 110; t += 1) { const p = psat(t); if (p > 110) break; if (t) c.lineTo(x(t), y(p)); else c.moveTo(x(t), y(p)); }
+    c.stroke();
+    c.fillStyle = css('--teal'); c.textAlign = 'right'; c.fillText('boiling curve', x(97) - 8, y(psat(97)) + 4);
+    c.fillStyle = 'rgba(60,140,210,0.95)'; c.textAlign = 'left'; c.fillText('LIQUID: water stays in the food', x(3), y(100));
+    c.fillStyle = css('--amber'); c.textAlign = 'right'; c.fillText('BOILS: water turns to steam', x(108), y(6));
+    // trail + current point
+    c.strokeStyle = css('--bad'); c.globalAlpha = 0.5; c.lineWidth = 1.5; c.beginPath();
+    trail.forEach(([t, p], i) => { if (i) c.lineTo(x(t), y(p)); else c.moveTo(x(t), y(p)); });
+    c.stroke(); c.globalAlpha = 1;
+    const px = x(s.tf), py = y(Math.min(110, s.pc)), sh = s.tf - s.boil;
+    if (sh > 0.5) {   // superheat = horizontal gap to the curve at this pressure
+      c.strokeStyle = css('--amber'); c.setLineDash([4, 3]); c.beginPath(); c.moveTo(x(s.boil), py); c.lineTo(px, py); c.stroke(); c.setLineDash([]);
+      c.fillStyle = css('--amber'); c.textAlign = 'center'; c.fillText('+' + sh.toFixed(0) + ' °C superheat', (x(s.boil) + px) / 2, py - 9);
+    }
+    c.fillStyle = css('--bad'); c.beginPath(); c.arc(px, py, 6, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = css('--surface'); c.lineWidth = 2; c.stroke();
+  }
+
   // ---------- player ----------
   let ph = 0, phT = 0, playing = false, last = 0, cur;
-  const speedSel = $('mSpeed'), slowChk = $('mSlow');
+  const speedSel = $('mSpeed');
 
-  function restart() {
-    prepare(); ph = 0; phT = 0; cur = state(0, 0); resetParticles(cur); updateText(true);
+  function jump(toPh) {
+    ph = toPh; phT = 0; cur = state(ph, 0); resetParticles(cur); trail = []; updateText(true);
   }
+  function restart() { prepare(); jump(0); }
+
   function updateText(force) {
     const P = PHASES[ph];
     if (force || $('mTitle').dataset.ph !== String(ph)) {
       $('mTitle').dataset.ph = String(ph);
       $('mStep').textContent = `Step ${ph + 1} of ${PHASES.length} · ${P.name}`;
       $('mTitle').textContent = P.title;
-      $('mText').textContent = P.text;
-      $('mEq').textContent = P.eq;
+      $('mText').textContent = P.text();
+      $('mWatch').textContent = P.watch;
+      $('mEq').textContent = P.eq();
       document.querySelectorAll('#mPhases [data-ph]').forEach(el => el.classList.toggle('on', +el.dataset.ph === ph));
     }
+    const rate = cur.rate * parseFloat(speedSel.value);
+    $('mClock').textContent = `Real time ${fmtT(cur.tr)} of ${fmtT(cur.dur)} · ` +
+      (rate >= 1.05 ? `shown ${rate < 10 ? rate.toFixed(1) : Math.round(rate)}× faster` : rate <= 0.95 ? `shown ${(1 / rate).toFixed(0)}× slower` : 'real speed');
     const sh = cur.tf - cur.boil;
+    const mF = cur.mass / 1000, water = Math.max(0, cur.mass - v.m * (1 - v.x)) / 1000;
+    const stored = sh > 0 ? mF * cpFood(water / Math.max(1e-6, mF)) * sh : 0;   // J above boiling
     $('mNums').innerHTML = [
-      ['Chamber', cur.pc.toFixed(1) + ' kPa'], ['Tank', cur.pt.toFixed(1) + ' kPa'],
-      ['Food', cur.tf.toFixed(1) + ' °C'], ['Water boils at', cur.boil.toFixed(1) + ' °C'],
-      ['Superheat', (sh > 0 ? '+' : '') + sh.toFixed(1) + ' °C'], ['Batch mass', cur.mass.toFixed(1) + ' g'],
-      ['Puff (this run)', (1 + (maxExp - 1) * cur.puff).toFixed(2) + '× volume']
+      ['Chamber pressure', cur.pc.toFixed(1) + ' kPa'], ['Tank pressure', cur.pt.toFixed(1) + ' kPa'],
+      ['Food temperature', cur.tf.toFixed(1) + ' °C'], ['Water boils at', cur.boil.toFixed(1) + ' °C'],
+      ['Superheat', (sh > 0 ? '+' : '') + sh.toFixed(1) + ' °C'],
+      ['Heat stored above boiling', stored > 0 ? `${(stored / 1000).toFixed(1)} kJ → can boil ${(stored / hfg(cur.tf) * 1000).toFixed(1)} g` : '0 kJ'],
+      ['Batch mass', cur.mass.toFixed(1) + ' g'],
+      ['Volume (estimate)', (1 + (maxExp - 1) * cur.puff).toFixed(2) + '×']
     ].map(([k, val]) => `<div><span>${k}</span><b>${val}</b></div>`).join('');
-    const tot = PHASES.reduce((a, p) => a + p.ms, 0), done = PHASES.slice(0, ph).reduce((a, p) => a + p.ms, 0) + phT;
-    $('mProgress').style.width = (100 * done / tot).toFixed(1) + '%';
+    let tot = 0, done = phT;
+    PHASES.forEach((_, i) => { tot += showMs(i); if (i < ph) done += showMs(i); });
+    $('mProgress').style.width = (100 * Math.min(1, done / tot)).toFixed(1) + '%';
   }
 
   function tick(ts) {
     const realDt = Math.min(50, last ? ts - last : 16); last = ts;
-    const visible = !$('tab-machine').hidden;
-    if (visible) {
+    if (!$('tab-machine').hidden) {
       const slow = slowChk.checked && PHASES[ph].name === 'BURST';
-      let simDt = 0;
       if (playing) {
-        simDt = realDt * parseFloat(speedSel.value) / (slow ? 20 : 1);
-        phT += simDt;
-        if (phT >= PHASES[ph].ms) {
+        phT += realDt * parseFloat(speedSel.value);
+        if (phT >= showMs(ph)) {
           if (ph < PHASES.length - 1) { ph++; phT = 0; }
-          else { phT = PHASES[ph].ms; playing = false; $('mPlay').textContent = 'Play'; }
+          else { phT = showMs(ph); playing = false; $('mPlay').textContent = 'Play'; }
         }
         cur = state(ph, phT);
         balance(cur);
+        const lt = trail[trail.length - 1];
+        if (!lt || Math.abs(lt[0] - cur.tf) > 0.2 || Math.abs(lt[1] - cur.pc) > 0.3) {
+          trail.push([cur.tf, Math.min(110, cur.pc)]);
+          if (trail.length > 600) trail.shift();
+        }
       }
       moveParticles(realDt, slow);
       if (cv.clientWidth && Math.abs(cv.clientWidth / W - scale) > 0.001) sizeCanvas();
       draw(cur, playing ? realDt : 0, slow && playing);
+      drawPhaseMap(cur);
       updateText(false);
     }
     requestAnimationFrame(tick);
   }
 
   $('mPlay').addEventListener('click', () => {
-    if (!playing && ph === PHASES.length - 1 && phT >= PHASES[ph].ms) restart();
+    if (!playing && ph === PHASES.length - 1 && phT >= showMs(ph)) restart();
     playing = !playing; $('mPlay').textContent = playing ? 'Pause' : 'Play';
   });
   $('mRestart').addEventListener('click', () => { restart(); playing = true; $('mPlay').textContent = 'Pause'; });
-  document.querySelectorAll('#mPhases [data-ph]').forEach(el => el.addEventListener('click', () => {
-    ph = +el.dataset.ph; phT = 0; cur = state(ph, 0); resetParticles(cur); updateText(true);
-  }));
+  document.querySelectorAll('#mPhases [data-ph]').forEach(el => el.addEventListener('click', () => jump(+el.dataset.ph)));
+  slowChk.addEventListener('change', () => { phT = Math.min(phT, showMs(ph)); cur = state(ph, phT); });
 
-  // Scenarios change the Simulator settings so both tabs agree.
+  // Scenarios change the Simulator settings so every tab agrees.
   const SCEN = {
     good: { m: 150, x: 0.35, t: 85, vc: 5, vt: 60, pt: 3, d: 32, q: 8 },
     slowvalve: { m: 150, x: 0.35, t: 85, vc: 5, vt: 60, pt: 3, d: 8, q: 8 },
@@ -410,6 +459,8 @@
     SIM_IDS.forEach(i => { $(i).value = sc[i]; $(i).dispatchEvent(new Event('input')); });
     restart(); playing = true; $('mPlay').textContent = 'Pause';
   }));
+  // Follow the Simulator sliders.
+  SIM_IDS.forEach(i => $(i).addEventListener('change', () => { const keep = ph; prepare(); jump(keep); }));
   window.addEventListener('resize', () => { scale = 0; });
 
   restart();
