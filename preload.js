@@ -5,5 +5,7 @@ contextBridge.exposeInMainWorld('lab', {
   choosePort: portId => ipcRenderer.send('serial-choose', portId),
   saveCsv: (name, content) => ipcRenderer.invoke('save-csv', { name, content }),
   loadBatches: () => ipcRenderer.invoke('batches-load'),
-  saveBatches: batches => ipcRenderer.invoke('batches-save', batches)
+  saveBatches: batches => ipcRenderer.invoke('batches-save', batches),
+  loadCalibration: () => ipcRenderer.invoke('calibration-load'),
+  saveCalibration: c => ipcRenderer.invoke('calibration-save', c)
 });

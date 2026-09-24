@@ -55,6 +55,8 @@ IDLE → EVACUATE → LOAD → HEAT → BURST → DRY → VENT → IDLE
 
 ## Build and upload
 
+Verified to compile with PlatformIO (espressif32 6.9.0): RAM 6.8 %, flash 23.6 %. Not yet run on hardware.
+
 Install [PlatformIO](https://platformio.org/) (VS Code extension, or `pip install platformio`), then from this folder:
 
 ```bash

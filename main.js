@@ -6,6 +6,7 @@ let win;
 let pendingPortCallback = null;
 
 const batchesFile = () => path.join(app.getPath('userData'), 'batches.json');
+const calibrationFile = () => path.join(app.getPath('userData'), 'calibration.json');
 
 function createWindow() {
   win = new BrowserWindow({
@@ -72,6 +73,19 @@ ipcMain.handle('batches-load', () => {
 
 ipcMain.handle('batches-save', (_e, batches) => {
   fs.writeFileSync(batchesFile(), JSON.stringify(batches, null, 2), 'utf8');
+  return true;
+});
+
+ipcMain.handle('calibration-load', () => {
+  try {
+    return JSON.parse(fs.readFileSync(calibrationFile(), 'utf8'));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('calibration-save', (_e, calibration) => {
+  fs.writeFileSync(calibrationFile(), JSON.stringify(calibration, null, 2), 'utf8');
   return true;
 });
 

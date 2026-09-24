@@ -34,6 +34,24 @@ Above the curve the walls are rubbery, so the food can puff. Below it they are g
 
 This is why sugary apple needs drying to ~5 % moisture to be only just crisp (Tg ≈ 29 °C), while starchy taro or rice sets firmly crunchy (Tg ≈ 80 °C at the same moisture). The Tg values for dry solids and the k constants are typical literature-range estimates; real products vary, so calibrate them with tests.
 
+## Calibrate
+
+The simulation depends on four values that can only be measured on real hardware. The **Calibrate** tab fits them to runs recorded on the test rig:
+
+| Value | Default | Fitted from |
+|---|---|---|
+| Valve discharge coefficient | 0.7 | how fast the chamber pressure falls at the burst |
+| Flash time constant | 0.02 s | how quickly water boils off in the food |
+| Wall condensation time | 0.3 s | the slow pressure tail after the drop |
+| Heater efficiency | 0.6 | heating slope: m·cₚ·(dT/dt) / heater power |
+
+1. **Add runs:** use the current Live run, or import CSVs exported from the Live tab. Check each run's food and hardware values.
+2. **Fit:** a Nelder–Mead search minimises the error in chamber and tank pressure over the first 1.5 s of each burst, plus the flashed mass. Heater efficiency comes straight from the heating slope, which needs more than 20 s of real-time heating data.
+3. **Check:** the chart overlays measured chamber pressure, the default model and the fitted model. It also shows the error before and after; a fitted error near sensor noise (0.2–0.5 kPa) means the model explains the data.
+4. **Apply:** the values are saved on the PC (`calibration.json` in the app's data folder) and used by every tab from then on. **Reset to defaults** undoes it.
+
+**Add synthetic test run** makes a run with known values, so you can check the fitter. Tested result: valve coefficient 0.54 (true 0.55), flash 0.064 s (0.060), condensation 0.70 s (0.80), heater 0.45 (0.45). Condensation is the least certain, because it only shows in the slow tail of the burst window.
+
 ## Physics model
 
 All tabs share one model in [`physics.js`](physics.js).

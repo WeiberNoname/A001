@@ -136,6 +136,14 @@ pre.code{font:12px var(--mono);background:var(--ground);border:1px solid var(--l
 .m3label.hot{background:var(--teal);color:var(--surface);border-color:var(--teal)}
 .m3label.warm{background:var(--amber);color:var(--surface);border-color:var(--amber)}
 .m3hint{margin:0}
+#calChart{display:block;width:100%;height:260px}
+.calrun{border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px}
+.calrun.on{border-color:var(--teal)}
+.calname{font:600 14px var(--sans);background:none;border:0;color:var(--ink);padding:0;cursor:pointer;text-align:left}
+.calfields{gap:8px}
+.calin{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted)}
+.calin input{width:88px}
+.calrun .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:pointer;padding:0}
 td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:pointer;padding:0}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
 </style>
@@ -153,6 +161,7 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
   <button type="button" role="tab" data-tab="machine" aria-selected="true">Machine</button>
   <button type="button" role="tab" data-tab="sim" aria-selected="false">Simulator</button>
   <button type="button" role="tab" data-tab="live" aria-selected="false">Live test</button>
+  <button type="button" role="tab" data-tab="cal" aria-selected="false">Calibrate</button>
 </nav>
 
 <div id="tab-machine" class="tabpane">
@@ -359,6 +368,47 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
 </section>
 </div>
 
+<div id="tab-cal" class="tabpane" hidden>
+  <section class="panel">
+    <h2>Calibrate the model with measured runs</h2>
+    <p style="max-width:68ch;margin:8px 0 0">The simulation uses four values that can only be measured on real hardware. Add runs recorded on the test rig, fit, check the curves match, then apply. After that every tab uses numbers from your machine instead of assumptions.</p>
+    <p class="note" style="margin:10px 0 0" id="calModel"></p>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">1 · Runs</h3>
+      <div class="row">
+        <button type="button" class="btn" id="calAddLive">Add current Live run</button>
+        <label class="btn" for="calImport" style="display:inline-block">Import run CSV<input type="file" id="calImport" accept=".csv" multiple hidden></label>
+        <button type="button" class="btn" id="calSynth">Add synthetic test run</button>
+      </div>
+    </div>
+    <p class="note" style="margin:8px 0 12px">Each run needs a burst (BURST state or a sharp pressure drop). For heater efficiency it also needs the heating segment in real time, longer than 20 s. Check the food and hardware values match what you used.</p>
+    <div id="calRuns"></div>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">2 · Fit</h3>
+      <button type="button" class="btn primary" id="calFit">Fit parameters</button>
+    </div>
+    <p class="note" id="calStatus" style="margin:8px 0 12px"></p>
+    <canvas id="calChart" aria-label="Measured chamber pressure against simulation with default and fitted values"></canvas>
+    <div class="legend" style="margin-top:6px"><span><b style="background:var(--amber)"></b>Measured chamber pressure</span><span><b style="background:var(--muted)"></b>Default model (dashed)</span><span><b style="background:var(--teal)"></b>Fitted model</span></div>
+    <div id="calResults" style="margin-top:14px"></div>
+  </section>
+
+  <section class="panel">
+    <h3>3 · Apply</h3>
+    <div class="row">
+      <button type="button" class="btn primary" id="calApply" disabled>Apply to model</button>
+      <button type="button" class="btn" id="calReset" disabled>Reset to defaults</button>
+    </div>
+    <p class="note" style="margin:10px 0 0">Applied values are saved on this PC and loaded every time the app starts.</p>
+  </section>
+</div>
+
 <div id="tab-live" class="tabpane" hidden>
   <section class="panel">
     <div class="row" style="justify-content:space-between">
@@ -522,5 +572,6 @@ run();
 <script src="machine3d.js"></script>
 <script src="food.js"></script>
 <script src="machine.js"></script>
+<script src="calibrate.js"></script>
 </body>
 </html>

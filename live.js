@@ -97,6 +97,8 @@
   }
 
   const last = () => run[run.length - 1];
+  // Lets the Calibrate tab use the recorded run.
+  window.VBLLive = { getRun: () => run.map(s => ({ ...s })) };
 
   // ---------- gauges ----------
   function updateGauges() {
