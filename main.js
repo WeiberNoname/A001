@@ -7,6 +7,7 @@ let pendingPortCallback = null;
 
 const batchesFile = () => path.join(app.getPath('userData'), 'batches.json');
 const calibrationFile = () => path.join(app.getPath('userData'), 'calibration.json');
+const roadmapFile = () => path.join(app.getPath('userData'), 'roadmap.json');
 
 function createWindow() {
   win = new BrowserWindow({
@@ -86,6 +87,19 @@ ipcMain.handle('calibration-load', () => {
 
 ipcMain.handle('calibration-save', (_e, calibration) => {
   fs.writeFileSync(calibrationFile(), JSON.stringify(calibration, null, 2), 'utf8');
+  return true;
+});
+
+ipcMain.handle('roadmap-load', () => {
+  try {
+    return JSON.parse(fs.readFileSync(roadmapFile(), 'utf8'));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('roadmap-save', (_e, roadmap) => {
+  fs.writeFileSync(roadmapFile(), JSON.stringify(roadmap, null, 2), 'utf8');
   return true;
 });
 

@@ -144,6 +144,22 @@ pre.code{font:12px var(--mono);background:var(--ground);border:1px solid var(--l
 .calin{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted)}
 .calin input{width:88px}
 .calrun .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:pointer;padding:0}
+.rmnext{border-left:4px solid var(--teal)}
+.rmgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
+.rmtask{border-top:1px solid var(--line);padding:8px 0}
+.rmtask summary{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;cursor:pointer;list-style:none}
+.rmtask summary::-webkit-details-marker{display:none}
+.rmtask summary input{accent-color:var(--teal);width:16px;height:16px}
+.rmtitle{font-size:14px;font-weight:600;flex:1 1 0;min-width:0}
+.rmtask summary .rmtag{order:3}
+.rmtask summary input{flex:none;margin-top:2px}
+.rmtask.done .rmtitle{color:var(--muted);text-decoration:line-through}
+.rmtag{font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:2px 6px}
+.rmbody{display:flex;flex-direction:column;gap:8px;padding:8px 0 4px 24px;font-size:14px}
+.rmbody .btn{align-self:flex-start}
+.rmhow{margin:6px 0 0;padding-left:18px;font-size:14px}
+.rmnotes{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.rmnotes textarea{width:100%}
 td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:pointer;padding:0}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
 </style>
@@ -162,6 +178,7 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
   <button type="button" role="tab" data-tab="sim" aria-selected="false">Simulator</button>
   <button type="button" role="tab" data-tab="live" aria-selected="false">Live test</button>
   <button type="button" role="tab" data-tab="cal" aria-selected="false">Calibrate</button>
+  <button type="button" role="tab" data-tab="roadmap" aria-selected="false">Next steps</button>
 </nav>
 
 <div id="tab-machine" class="tabpane">
@@ -366,6 +383,19 @@ td .del{font:12px var(--mono);background:none;border:0;color:var(--bad);cursor:p
     <p style="margin:0"><b>Assumed values to check against Prototype 1:</b> discharge coefficient, flash and condensation time constants, food density 0.8 g/mL, wall temperature. The puff index is a heuristic combining superheat, drop time against a 0.15 s vapour-escape time, and moisture. Fit it to measured expansion ratios.</p>
   </div>
 </section>
+</div>
+
+<div id="tab-roadmap" class="tabpane" hidden>
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">From virtual prototype to manufactured machine</h3>
+      <span class="note" id="rmCount"></span>
+    </div>
+    <div class="mbar" style="margin-top:10px"><i id="rmBar"></i></div>
+    <p class="note" style="margin:10px 0 0">Tick steps as you finish them. Steps marked "auto" are checked by the app itself. Progress and notes are saved on this PC.</p>
+  </section>
+  <section class="panel rmnext" id="rmNext"></section>
+  <div class="rmgrid" id="rmPhases"></div>
 </div>
 
 <div id="tab-cal" class="tabpane" hidden>
@@ -573,5 +603,6 @@ run();
 <script src="food.js"></script>
 <script src="machine.js"></script>
 <script src="calibrate.js"></script>
+<script src="roadmap.js"></script>
 </body>
 </html>

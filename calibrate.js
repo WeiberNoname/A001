@@ -26,6 +26,7 @@
   };
 
   let runs = [], fitted = null, applied = null, selected = 0;
+  window.VBLCal = { isApplied: () => !!applied };
 
   // ---------- storage ----------
   const store = {

@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld('lab', {
   loadBatches: () => ipcRenderer.invoke('batches-load'),
   saveBatches: batches => ipcRenderer.invoke('batches-save', batches),
   loadCalibration: () => ipcRenderer.invoke('calibration-load'),
-  saveCalibration: c => ipcRenderer.invoke('calibration-save', c)
+  saveCalibration: c => ipcRenderer.invoke('calibration-save', c),
+  loadRoadmap: () => ipcRenderer.invoke('roadmap-load'),
+  saveRoadmap: r => ipcRenderer.invoke('roadmap-save', r)
 });

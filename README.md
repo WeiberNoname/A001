@@ -52,6 +52,10 @@ The simulation depends on four values that can only be measured on real hardware
 
 **Add synthetic test run** makes a run with known values, so you can check the fitter. Tested result: valve coefficient 0.54 (true 0.55), flash 0.064 s (0.060), condensation 0.70 s (0.80), heater 0.45 (0.45). Condensation is the least certain, because it only shows in the slow tail of the burst window.
 
+## Next steps
+
+The **Next steps** tab is the roadmap from virtual prototype to manufactured machine: 29 steps in 7 phases (virtual prototype, test rig, measure and calibrate, engineering design, safety and certification, manufacturing, protect and launch). Each step has why it matters, how to do it, rough cost and time, a button to the tab that helps, and a notes field. A "Do this next" card shows the first unfinished step. Steps the app can check itself are ticked automatically: calibration applied, measured runs in the batch log, and food trials. Progress is saved in `roadmap.json` in the app's data folder.
+
 ## Physics model
 
 All tabs share one model in [`physics.js`](physics.js).
